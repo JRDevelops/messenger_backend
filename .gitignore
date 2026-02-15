@@ -1,0 +1,6 @@
+# --- Environment variables ---
+*.env
+
+# --- SQLite / local DB files ---
+*.sqlite3
+*.db
