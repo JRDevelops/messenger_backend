@@ -100,16 +100,39 @@ async def get_current_user(
   return current_user
 
 #update password
-#@router.patch(
-#    "/me/password",
-#    response_model=UserPrivate
-#)
-#async def update_user_password(
-#  password: UserUpdatePassword,
-#  db: Annotated[AsyncSession,Depends(get_db)],
-#  current_user: UserPrivate = Depends(get_current_user)
-#):
-#  print("user is authenticated, new password is {password.password}")
+@router.patch(
+    "/me/password",
+    response_model=UserPrivate
+)
+async def update_user_password(
+  passwords: UserUpdatePassword,
+  db: Annotated[AsyncSession,Depends(get_db)],
+  current_user: CurrentUser
+):
+  #even though user is authenticated - check password again to ensure no one has gained access of the device
+  correct_password = verify_password(passwords.old_password, current_user.password_hash)
+  if not correct_password:
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        details = "incorrect password"
+      )
+
+  #check that the given passwords match
+  if passwords.new_password1 != passwords.new_password2:
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST,
+      detail="new passwords do not match"
+      )
+  
+  #create password hash
+  new_password_hash = hash_password(passwords.new_password1)
+
+  current_user.password_hash = new_password_hash
+
+  await db.commit()
+  await db.refresh(current_user)
+
+  return current_user
 
 #Get public details for a user
 @router.get(

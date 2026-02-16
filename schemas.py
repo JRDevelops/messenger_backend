@@ -41,7 +41,9 @@ class UserUpdate(BaseModel):
   is_verified: bool = Field(default = None)
 
 class UserUpdatePassword(BaseModel):
-  password : str = Field(min_length=8, max_length=100) #input password as text, will be saved to database as a password_hash
+  old_password : str = Field(min_length=8, max_length=100) #old_password to confirm - want to make sure no one is updating that has access to already authorised app
+  new_password1 : str = Field(min_length=8, max_length=100) #input password as text, will be saved to database as a password_hash
+  new_password2 : str = Field(min_length=8, max_length=100) #compare against password1 to ensure that it is correct
 
 class Token(BaseModel):
   access_token: str

@@ -61,7 +61,7 @@ def verify_access_token(token: str) -> str | None:
   else:
     return payload.get("sub")
   
-#get current logged in user
+#create dependency to get current logged in user
 async def get_current_user_dep(
     token: Annotated[str, Depends(oauth2_scheme)],
     db: Annotated[AsyncSession, Depends(get_db)]

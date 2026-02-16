@@ -35,6 +35,7 @@ async def get_contacts(current_user: CurrentUser, db: Annotated[AsyncSession, De
 
   return contacts
 
+#create a new contact
 @router.post(
   "",
   response_model=ContactCreate,
