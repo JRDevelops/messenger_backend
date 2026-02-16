@@ -8,6 +8,8 @@ import models
 from database import Base, engine, get_db 
 from schemas import ContactCreate, ContactResponse, ContactUpdateStatus
 
+from auth import CurrentUser
+
 router = APIRouter()
 
 
@@ -17,21 +19,14 @@ print("Loading in contacts API...")
 
 #Get contacts of a user
 @router.get(
-  "/{user_id}",
+  "/me",
   response_model=list[ContactResponse]
 )
-async def get_contacts(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
-  #check if user exists and has contacts
-  user_exists_result = await db.execute(select(models.User).where(models.User.user_id == user_id))
-  user_exists = user_exists_result.scalars().first()
-  contacts_result = await db.execute(select(models.Contact).where(models.Contact.user_id == user_id))
+async def get_contacts(current_user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]):
+  #check if user has contacts
+  contacts_result = await db.execute(select(models.Contact).where(models.Contact.user_id == current_user.user_id))
   contacts = contacts_result.scalars().all()
 
-  if not user_exists:
-    raise HTTPException(
-      status_code=status.HTTP_400_BAD_REQUEST,
-      detail="User does not exist"
-    )
   if not contacts:
     raise HTTPException(
       status_code=status.HTTP_400_BAD_REQUEST,
@@ -44,15 +39,11 @@ async def get_contacts(user_id: int, db: Annotated[AsyncSession, Depends(get_db)
   "",
   response_model=ContactCreate,
 )
-async def create_contact(contact: ContactCreate, db: Annotated[AsyncSession, Depends(get_db)]):
-  #check if user exists
-  user_result = await db.execute(select(models.User).where(models.User.user_id == contact.user_id))
-  user_exists = user_result.scalars().first()
-  if not user_exists:
-    raise HTTPException(
-      status_code=status.HTTP_400_BAD_REQUEST,
-      detail="User ID does not exist"
-    )
+async def create_contact(
+  contact: ContactCreate, 
+  current_user: CurrentUser, 
+  db: Annotated[AsyncSession, Depends(get_db)]
+):
   
   #check if contact exists
   contact_result = await db.execute(select(models.User).where(models.User.user_id == contact.contact_id))
@@ -68,7 +59,7 @@ async def create_contact(contact: ContactCreate, db: Annotated[AsyncSession, Dep
     select(models.Contact)
     .where(
       and_(
-        models.Contact.user_id == contact.user_id,
+        models.Contact.user_id == current_user.user_id,
         models.Contact.contact_id == contact.contact_id
       )
     )
@@ -82,15 +73,14 @@ async def create_contact(contact: ContactCreate, db: Annotated[AsyncSession, Dep
   
   
   #check user is not adding themselves
-  if contact.user_id == contact.contact_id:
+  if current_user.user_id == contact.contact_id:
     raise HTTPException(
       status_code=status.HTTP_400_BAD_REQUEST,
       detail="User ID cannot equal the new contact ID"
     )
 
-  
   new_contact = models.Contact(
-    user_id = user_exists.user_id,
+    user_id = current_user.user_id,
     contact_id = contact.contact_id,
     status = "pending"
   )
@@ -105,23 +95,15 @@ async def create_contact(contact: ContactCreate, db: Annotated[AsyncSession, Dep
   "/{user_id}/{contact_id}",
   response_model=ContactResponse
 )
-async def update_contact_status(user_id: int, contact_id: int, contact_update: ContactUpdateStatus, db: Annotated[AsyncSession, Depends(get_db)]):
-  #check if user exists 
-  user_result = await db.execute(select(models.User).where(models.User.user_id == user_id))
-  user = user_result.scalars().first()
-
-  if not user:
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="User not found"
-    )
+async def update_contact_status(current_user: CurrentUser, contact_update: ContactUpdateStatus, db: Annotated[AsyncSession, Depends(get_db)]):
+  
   #check if user has that contact
   contact_result = await db.execute(
     select(models.Contact)
     .where(
       and_(
-        models.Contact.user_id == user_id,
-        models.Contact.contact_id == contact_id
+        models.Contact.user_id == current_user.user_id,
+        models.Contact.contact_id == contact_update.contact_id
       )
     )
   )
@@ -130,7 +112,7 @@ async def update_contact_status(user_id: int, contact_id: int, contact_update: C
   if not contact:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
-      detail="User does not have a contact with that username"
+      detail="User does not have a contact with that user ID"
     )
   
   #check that status is valid
@@ -139,11 +121,9 @@ async def update_contact_status(user_id: int, contact_id: int, contact_update: C
       status_code=status.HTTP_400_BAD_REQUEST, 
       detail="Invalid status value" 
     )
-
-  #otherwise update the status
-  update_data = contact_update.model_dump(exclude_unset=True)
-  for field, value in update_data.items():
-    setattr(contact, field, value)
+  
+  #update the status
+  contact.status = contact_update.status
 
   await db.commit()
   await db.refresh(contact)
@@ -155,23 +135,14 @@ async def update_contact_status(user_id: int, contact_id: int, contact_update: C
     "/{user_id}/{contact_id}",
     status_code=status.HTTP_204_NO_CONTENT
 )
-async def delete_contact(user_id: int, contact_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
-  #check if user exists 
-  user_result = await db.execute(select(models.User).where(models.User.user_id == user_id))
-  user = user_result.scalars().first()
-
-  if not user:
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="User not found"
-    )
+async def delete_contact(current_user: CurrentUser, contact_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
   
   #check if contact exists
   contact_result = await db.execute(
     select(models.Contact)
     .where(
       and_(
-        models.Contact.user_id == user_id,
+        models.Contact.user_id == current_user.user_id,
         models.Contact.contact_id == contact_id
       )
     )

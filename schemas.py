@@ -11,7 +11,7 @@ class UserBase(BaseModel):
   email : EmailStr = Field(max_length=100)
 
 class UserCreate(UserBase):
-  password : str = Field(min_length=8, max_length=100) ##TODO change this as obviously no security here
+  password : str = Field(min_length=8, max_length=100) #input password as text, will be saved to database as a password_hash
 
 class UserPublic(BaseModel):
   model_config = ConfigDict(from_attributes=True)
@@ -40,13 +40,16 @@ class UserUpdate(BaseModel):
   is_active: bool = Field(default = None)
   is_verified: bool = Field(default = None)
 
+class UserUpdatePassword(BaseModel):
+  password : str = Field(min_length=8, max_length=100) #input password as text, will be saved to database as a password_hash
+
 class Token(BaseModel):
   access_token: str
   token_type: str
 
 #contact list
 class ContactBase(BaseModel):
-  user_id: int
+  #user_id: int
   contact_id: int 
 
 class ContactCreate(ContactBase):
@@ -55,10 +58,12 @@ class ContactCreate(ContactBase):
 class ContactResponse(ContactBase):
   model_config = ConfigDict(from_attributes=True)
   
+  user_id: int
   status: ContactStatus | None = Field(default=ContactStatus.PENDING)
   created_at: datetime
 
 class ContactUpdateStatus(BaseModel):
+  contact_id: int
   status : str | None = Field(default=None,max_length=20)
   
 

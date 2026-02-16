@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from auth import create_access_token, hash_password, oauth2_scheme, verify_access_token, verify_password
+from auth import create_access_token, hash_password, verify_password, CurrentUser
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import HTTPException, status, Depends, APIRouter
@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 import models
 from config import settings
 from database import get_db 
-from schemas import Token, UserCreate, UserPublic, UserPrivate, UserUpdate
+from schemas import Token, UserCreate, UserPublic, UserPrivate, UserUpdate, UserUpdatePassword
 
 router = APIRouter()
 
@@ -95,43 +95,21 @@ async def login_for_access_token(
     response_model = UserPrivate
 )
 async def get_current_user(
-  token: Annotated[str, Depends(oauth2_scheme)],
-  db: Annotated[AsyncSession, Depends(get_db)]
+  current_user: CurrentUser
 ):
-  """Get the currently authenticated user."""
-  user_id = verify_access_token(token)
-  if user_id is None:
-    raise HTTPException(
-      status_code=status.HTTP_401_UNAUTHORIZED,
-      detail="Invalid or expired token",
-      headers={"WWW-Authenticate": "Bearer"}
-    )
-  
-  # validate user_id is a valid integer (defense against malformed JWT)
-  try:
-    user_id_int = int(user_id)
-  except (TypeError, ValueError):
-    raise HTTPException(
-      status_code=status.HTTP_401_UNAUTHORIZED,
-      detail="Invalid or expired token",
-      headers={"WWW-Authenticate": "Bearer"}
-    )
-  
-  result = await db.execute(
-    select(models.User).where(
-      models.User.user_id == user_id_int
-    )
-  )
-  user = result.scalars().first()
+  return current_user
 
-  if not user:
-    raise HTTPException(
-      status_code=status.HTTP_401_UNAUTHORIZED,
-      detail="User not found",
-      headers={"WWW-Authenticate": "Bearer"}
-    )
-
-  return user
+#update password
+#@router.patch(
+#    "/me/password",
+#    response_model=UserPrivate
+#)
+#async def update_user_password(
+#  password: UserUpdatePassword,
+#  db: Annotated[AsyncSession,Depends(get_db)],
+#  current_user: UserPrivate = Depends(get_current_user)
+#):
+#  print("user is authenticated, new password is {password.password}")
 
 #Get public details for a user
 @router.get(
@@ -152,69 +130,37 @@ async def get_user(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
   return user
 
 #Get private details for a user
-@router.get("/details/{user_id}",
+@router.get("/details/me",
   response_model=UserPrivate
 )
-async def get_user_detailed(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
-  result = await db.execute(
-    select(models.User)
-    .options( #eager load the columns which rely on a relationship with another table
-      selectinload(models.User.contacts),
-      selectinload(models.User.in_contacts)
-    )
-    .where(models.User.user_id == user_id)
-  )
-  user = result.scalars().first()
-  if not user:
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="User not found"
-    )
-  return user
+async def get_user_detailed(current_user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]):
+  return current_user
 
 #update user details
 @router.patch(
-    "/{user_id}", 
+    "/me", 
     response_model=UserPrivate 
 )
-async def update_user(user_id: int, user_update: UserUpdate, db: Annotated[AsyncSession, Depends(get_db)]):
-  #check if user exists 
-  result = await db.execute(select(models.User).where(models.User.user_id == user_id))
-  user = result.scalars().first()
-
-  if not user:
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="User not found"
-    )
+async def update_user(current_user: CurrentUser, user_update: UserUpdate, db: Annotated[AsyncSession, Depends(get_db)]):
   
   #update user details
   update_data = user_update.model_dump(exclude_unset=True)
   for field, value in update_data.items():
-    setattr(user, field, value)
+    setattr(current_user, field, value)
   
   await db.commit() 
-  await db.refresh(user)
+  await db.refresh(current_user)
 
-  return user
+  return current_user
 
 #delete a user
 @router.delete(
-    "/{user_id}",
+    "/me",
     status_code=status.HTTP_204_NO_CONTENT
 )
-async def delete_user(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
-  #check if user exists 
-  result = await db.execute(select(models.User).where(models.User.user_id == user_id))
-  user = result.scalars().first()
-
-  if not user:
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="User not found"
-    )
+async def delete_user(current_user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]):
   
-  await db.delete(user)
+  await db.delete(current_user)
   await db.commit()
 
 
