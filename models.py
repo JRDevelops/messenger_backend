@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Enum as SQLEnum
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Enum as SQLEnum, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -66,6 +66,26 @@ class Contact(Base):
     foreign_keys=[contact_id],
     lazy="selectin"
   )
+
+#chats - groups and 1 to 1 chats
+class chats(Base):
+  __tablename__ = "chats"
+
+  chat_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+  chat_name: Mapped[str] = mapped_column(String(100), nullable=False)
+  chat_type: Mapped[str] = mapped_column(String(20), nullable=False)
+  chat_picture_url : Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+  #related to event
+  event_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+  event_date: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+  #chat event setttings
+  default_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+  default_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+  default_weekday: Mapped[int | None] = mapped_column(Integer, nullable=True) #int 1 - 7 representing a weekday
+
+  created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 
 
