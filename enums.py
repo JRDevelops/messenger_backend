@@ -8,3 +8,9 @@ class ContactStatus(str, Enum):
 class ChatType(str, Enum):
     DIRECT = "direct"
     GROUP = "group"
+
+class EventStatus(str, Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+    TENTATIVE = "tentative"

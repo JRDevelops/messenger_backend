@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, time
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Enum as SQLEnum, Time
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Enum as SQLEnum, Time, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -43,6 +43,14 @@ class User(Base):
     lazy="selectin"
   ) 
 
+  #relationship with the group chat members table
+  chat_member: Mapped[list["ChatMembers"]] = relationship(
+    back_populates="chat_members",
+    cascade="all, delete-orphan",
+    foreign_keys=lambda: [ChatMembers.user_id],
+    lazy="selectin"
+  )
+
 #Authentications and sessions table to manage user logins and sessions
 
 #contacts
@@ -68,7 +76,7 @@ class Contact(Base):
   )
 
 #chats - groups and 1 to 1 chats
-class chats(Base):
+class Chats(Base):
   __tablename__ = "chats"
 
   chat_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -87,6 +95,38 @@ class chats(Base):
 
   created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
+  #relationship between the group table and the members table
+  members: Mapped[list["ChatMembers"]] = relationship(
+    back_populates="chat",
+    cascade="all, delete-orphan",
+    foreign_keys=lambda: [ChatMembers.chat_id],
+    lazy="selectin"
+  )
 
+
+#chat members
+class ChatMembers(Base):
+  __tablename__ = "chat_members"
+
+  id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+  chat_id: Mapped[int] = mapped_column(Integer, ForeignKey("chats.chat_id"), nullable=False)
+  user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.user_id"), nullable=False)
+  is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+  event_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+  muted_until: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+  created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+  #relationship bettern the chat id and the chat members
+  chat: Mapped["Chats"] = relationship(
+    back_populates="members",
+    foreign_keys=[chat_id],
+    lazy="selectin"
+  )
+  #relationship between the group member id and the user table id
+  chat_members: Mapped["User"] = relationship(
+    back_populates="chat_member",
+    foreign_keys=[user_id],
+    lazy="selectin"
+  )
 
 print("Models have loaded.")
