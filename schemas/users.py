@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, EmailStr
 
-from enums import ContactStatus
 
 #User related 
 class UserBase(BaseModel):
@@ -29,8 +28,8 @@ class UserPrivate(UserPublic):
   created_at: datetime
   is_active: bool
   is_verified: bool
-  contacts : list[ContactResponse]
-  in_contacts : list[ContactResponse]
+  #contacts : list[ContactResponse]
+  #in_contacts : list[ContactResponse]
 
 class UserUpdate(BaseModel):
   display_name: str | None = Field(default = None)
@@ -48,24 +47,3 @@ class UserUpdatePassword(BaseModel):
 class Token(BaseModel):
   access_token: str
   token_type: str
-
-#contact list
-class ContactBase(BaseModel):
-  #user_id: int
-  contact_id: int 
-
-class ContactCreate(ContactBase):
-  pass
-
-class ContactResponse(ContactBase):
-  model_config = ConfigDict(from_attributes=True)
-  
-  user_id: int
-  status: ContactStatus | None = Field(default=ContactStatus.PENDING)
-  created_at: datetime
-
-class ContactUpdateStatus(BaseModel):
-  contact_id: int
-  status : str | None = Field(default=None,max_length=20)
-  
-
