@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 import models
 from database import get_db 
+from services import ChatService
 from schemas import ChatResponse, ChatCreate, ChatUpdate
 
 router = APIRouter()
@@ -23,30 +24,12 @@ print("Loading in chats API...")
   response_model=ChatResponse
 )
 async def create_chat(chat_details: ChatCreate, current_user: CurrentUser, db: Annotated[AsyncSession,Depends(get_db)]):
-
-  #create a new chat
-  new_chat = models.Chats(
-    chat_name = chat_details.chat_name,
-    chat_type = chat_details.chat_type
-  )
-
-  #add chat to table
-  db.add(new_chat)
-  await db.commit()
-
-  #add initial member to the group
-  new_member = models.ChatMembers(
-    chat_id = new_chat.chat_id,
-    user_id = current_user.user_id,
-    is_admin = True
-  )
-  db.add(new_member)
-  await db.commit()
-
-  await db.refresh(new_chat)
-  await db.refresh(new_member)
+  service = ChatService(db)
+  new_chat = await service.create_chat(chat_details, current_user)
+  await service.add_chat_member(new_chat, current_user, True)
 
   return new_chat
+
 
 #recieve info about a chat
 @router.get(
@@ -54,26 +37,18 @@ async def create_chat(chat_details: ChatCreate, current_user: CurrentUser, db: A
   response_model=ChatResponse
 )
 async def get_chat(current_user: CurrentUser, chat_id: int, db: Annotated[AsyncSession,Depends(get_db)]):
-  #check that the current user is a member for the current group
-  result = await db.execute(
-    select(models.ChatMembers).where(
-      and_(
-        models.ChatMembers.chat_id == chat_id,
-        models.ChatMembers.user_id == current_user.user_id
-      )
-    )
-  )
-  user_in_chat = result.scalars().first()
+  services = ChatService(db)
+  #check if user is authorised to see info about the chat
+  is_current_user_in_chat = await services.get_user_in_chat(chat_id, current_user.user_id)
 
-  if not user_in_chat:
+  if not is_current_user_in_chat:
     raise HTTPException(
         status_code = status.HTTP_403_FORBIDDEN,
         detail="User does not have access to this chat"
       )
   
   #otherwise get the chat
-  result = await db.execute(select(models.Chats).where(models.Chats.chat_id == chat_id))
-  chat = result.scalars().first()
+  chat = await services.get_chat_info(chat_id)
   
   return chat
 
@@ -93,6 +68,8 @@ async def update_chat(current_user: CurrentUser, chat_updates: ChatUpdate, chat_
     )
   )
   user_in_chat = result.scalars().first()
+
+  print(user_in_chat.username)
 
   if not user_in_chat:
     raise HTTPException(
