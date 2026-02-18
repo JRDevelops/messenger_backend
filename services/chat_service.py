@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
 from database import get_db 
-from schemas import ChatCreate
+from schemas import ChatCreate, ChatUpdate
 
 class ChatService():
 
@@ -70,6 +70,12 @@ class ChatService():
       )
     )
     user_in_chat = result.scalars().first()
+    if not user_in_chat:
+      raise HTTPException(
+          status_code = status.HTTP_403_FORBIDDEN,
+          detail="User does not have access to this chat"
+        )
+
     return user_in_chat
 
   async def get_chat_info(self, chat_id: int):
@@ -77,3 +83,18 @@ class ChatService():
     result = await self.db.execute(select(models.Chats).where(models.Chats.chat_id == chat_id))
     chat = result.scalars().first()
     return chat
+  
+  async def update_chat(self, chat_id: int, chat_updates:ChatUpdate):
+    #get the current chat
+    result = await self.db.execute(select(models.Chats).where(models.Chats.chat_id == chat_id))
+    current_chat = result.scalars().first()
+    
+    #create the updates
+    update_data = chat_updates.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(current_chat, field, value)
+
+    await self.db.commit()
+    await self.db.refresh(current_chat)
+
+    return current_chat
