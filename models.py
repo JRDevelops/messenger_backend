@@ -45,7 +45,7 @@ class User(Base):
 
   #relationship with the group chat members table
   chat_member: Mapped[list["ChatMembers"]] = relationship(
-    back_populates="chat_members",
+    back_populates="user",
     cascade="all, delete-orphan",
     foreign_keys=lambda: [ChatMembers.user_id],
     lazy="selectin"
@@ -123,7 +123,7 @@ class ChatMembers(Base):
     lazy="selectin"
   )
   #relationship between the group member id and the user table id
-  chat_members: Mapped["User"] = relationship(
+  user: Mapped["User"] = relationship(
     back_populates="chat_member",
     foreign_keys=[user_id],
     lazy="selectin"

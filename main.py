@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from database import Base, engine
 
-from routers import users, contacts
+from routers import users, contacts, chats
 
 #create the database if it does not exist
 @asynccontextmanager
@@ -23,6 +23,7 @@ app = FastAPI(lifespan=lifespan)
 #setup router
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(contacts.router, prefix="/api/contacts", tags=["contacts"])
+app.include_router(chats.router, prefix="/api/chats", tags=["chats"])
 
 print("Loading completed.")
 

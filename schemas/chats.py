@@ -18,7 +18,7 @@ class ChatBase(BaseModel):
 class ChatCreate(ChatBase):
   pass
 
-#recieve infor about a chat
+#recieve info about a chat
 class ChatResponse(ChatBase):
   model_config = ConfigDict(from_attributes=True)
 
