@@ -34,7 +34,7 @@ class ChatResponse(ChatBase):
 
   created_at: datetime
 
-#update infor about a chat
+#update info about a chat
 class ChatUpdate(BaseModel):
   chat_name : str | None = Field(default=None, min_length=1, max_length=100)
   chat_picture_url : str | None = Field(default=None)
