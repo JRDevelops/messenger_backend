@@ -12,6 +12,7 @@ import models
 from config import settings
 from database import get_db 
 from schemas import Token, UserCreate, UserPublic, UserPrivate, UserUpdate, UserUpdatePassword
+from services import UserService, AuthService
 
 router = APIRouter()
 
@@ -26,34 +27,8 @@ print("Loading in users API...")
     status_code=status.HTTP_201_CREATED
 )
 async def create_user(user: UserCreate, db: Annotated[AsyncSession, Depends(get_db)]):
-  #check that username is unique
-  result = await db.execute(select(models.User).where(func.lower(models.User.username) == user.username.lower()))
-  user_exists = result.scalars().first()
-  if user_exists:
-    raise HTTPException(
-      status_code=status.HTTP_400_BAD_REQUEST,
-      detail="Username already exists"
-    )
-  #check if email is unique
-  result = await db.execute(select(models.User).where(func.lower(models.User.email) == user.email.lower()))
-  email_exists = result.scalars().first()
-  if email_exists:
-    raise HTTPException(
-      status_code=status.HTTP_400_BAD_REQUEST,
-      detail="Email already exists"
-    )
-  
-  new_user = models.User(
-    username=user.username,
-    email = user.email.lower(),
-    password_hash = hash_password(user.password)
-  )
-
-  #confirm all to database
-  db.add(new_user)
-  await db.commit()
-  await db.refresh(new_user)
-
+  service = UserService(db)
+  new_user = await service.create_user(user)
   return new_user
 
 #authenticate user
@@ -62,32 +37,9 @@ async def login_for_access_token(
   form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
   db: Annotated[AsyncSession, Depends(get_db)]
 ):
-  # lookup user by email (case-insensitive)
-  # Note: OAuth2PasswordRequestForm uses "username" field, but we are treating as email
-  result = await db.execute(
-    select(models.User).where(
-      func.lower(models.User.email) == form_data.username.lower()
-    )
-  )
-  user = result.scalars().first()
-
-  # verify user exists and password is correct
-  # don't reveal which one failed (best practice)
-  if not user or not verify_password(form_data.password, user.password_hash):
-    raise HTTPException(
-      status_code=status.HTTP_401_UNAUTHORIZED,
-      detail="incorrect username or password",
-      headers={"WWW-Authenticate": "Bearer"}
-    )
-  
-  # create access token with user id as subject
-  access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-  access_token = create_access_token(
-    data={"sub": str(user.user_id)}, 
-    expires_delta=access_token_expires
-  )
-
-  return Token(access_token=access_token, token_type="bearer")
+  service = AuthService(db)
+  token = await service.auth_user(form_data)
+  return token
 
 #get current logged in user
 @router.get(
@@ -99,6 +51,17 @@ async def get_current_user(
 ):
   return current_user
 
+#Get public details for a user
+@router.get(
+  "/{user_id}",
+  response_model=UserPublic
+)
+async def get_user_public(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
+  service = UserService(db)
+  user = await service.get_user_public(user_id)
+  return user
+
+
 #update password
 @router.patch(
     "/me/password",
@@ -109,54 +72,8 @@ async def update_user_password(
   db: Annotated[AsyncSession,Depends(get_db)],
   current_user: CurrentUser
 ):
-  #even though user is authenticated - check password again to ensure no one has gained access of the device
-  correct_password = verify_password(passwords.old_password, current_user.password_hash)
-  if not correct_password:
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        details = "incorrect password"
-      )
-
-  #check that the given passwords match
-  if passwords.new_password1 != passwords.new_password2:
-    raise HTTPException(
-      status_code=status.HTTP_400_BAD_REQUEST,
-      detail="new passwords do not match"
-      )
-  
-  #create password hash
-  new_password_hash = hash_password(passwords.new_password1)
-
-  current_user.password_hash = new_password_hash
-
-  await db.commit()
-  await db.refresh(current_user)
-
-  return current_user
-
-#Get public details for a user
-@router.get(
-  "/{user_id}",
-  response_model=UserPublic
-)
-async def get_user(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
-  result = await db.execute(
-    select(models.User)
-    .where(models.User.user_id == user_id)
-  )
-  user = result.scalars().first()
-  if not user:
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="User not found"
-    )
-  return user
-
-#Get private details for a user
-@router.get("/details/me",
-  response_model=UserPrivate
-)
-async def get_user_detailed(current_user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]):
+  service = UserService(db)
+  await service.update_password(current_user, passwords)
   return current_user
 
 #update user details
@@ -165,16 +82,9 @@ async def get_user_detailed(current_user: CurrentUser, db: Annotated[AsyncSessio
     response_model=UserPrivate 
 )
 async def update_user(current_user: CurrentUser, user_update: UserUpdate, db: Annotated[AsyncSession, Depends(get_db)]):
-  
-  #update user details
-  update_data = user_update.model_dump(exclude_unset=True)
-  for field, value in update_data.items():
-    setattr(current_user, field, value)
-  
-  await db.commit() 
-  await db.refresh(current_user)
-
-  return current_user
+  service = UserService(db)
+  updated_user = await service.update_user(current_user,user_update)
+  return updated_user
 
 #delete a user
 @router.delete(
@@ -182,7 +92,6 @@ async def update_user(current_user: CurrentUser, user_update: UserUpdate, db: An
     status_code=status.HTTP_204_NO_CONTENT
 )
 async def delete_user(current_user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]):
-  
   await db.delete(current_user)
   await db.commit()
 
