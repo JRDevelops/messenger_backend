@@ -23,7 +23,6 @@ async def create_chat(chat_details: ChatCreate, current_user: CurrentUser, db: A
   service = ChatService(db)
   new_chat = await service.create_chat(chat_details, current_user)
   await service.add_chat_member(new_chat, current_user, True)
-
   return new_chat
 
 
@@ -36,9 +35,7 @@ async def get_chat(current_user: CurrentUser, chat_id: int, db: Annotated[AsyncS
   service = ChatService(db)
   #check if user is authorised to see info about the chat
   await service.get_user_in_chat(chat_id, current_user.user_id)
-  #otherwise get the chat
   chat = await service.get_chat_info(chat_id)
-  
   return chat
 
 #update chat settings
@@ -50,10 +47,7 @@ async def update_chat(current_user: CurrentUser, chat_id: int, chat_updates: Cha
   service = ChatService(db)
   #check if user is authorised to see info about the chat
   await service.get_user_in_chat(chat_id, current_user.user_id)
-  
-  #update chat
   updated_chat = await service.update_chat(chat_id, chat_updates)
-
   return updated_chat
 
 

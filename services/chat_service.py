@@ -2,7 +2,7 @@ from typing import Annotated
 
 from auth import CurrentUser
 from fastapi import HTTPException, status, Depends
-from sqlalchemy import func, select, and_
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
@@ -14,7 +14,7 @@ class ChatService():
   def __init__(self, db: Annotated[AsyncSession,Depends(get_db)]):
     self.db = db
 
-  
+  #creates new chats, groups and 1 to 1
   async def create_chat(self, chat_details: ChatCreate, current_user: CurrentUser):
 
     #create a new chat
@@ -30,6 +30,7 @@ class ChatService():
 
     return new_chat
 
+  #add a new chat member to an existing group
   async def add_chat_member(self, chat: models.Chats, new_user: models.User, is_admin: bool):
 
     #check if member is already in the group
@@ -59,6 +60,7 @@ class ChatService():
 
     return new_member
 
+  #find a user in a chat and return it from the database
   async def get_user_in_chat(self, chat_id: int, user_id: int):
     #check that the current user is a member for the current group
     result = await self.db.execute(
@@ -78,12 +80,14 @@ class ChatService():
 
     return user_in_chat
 
+  #find a chat and return it from the database
   async def get_chat_info(self, chat_id: int):
   
     result = await self.db.execute(select(models.Chats).where(models.Chats.chat_id == chat_id))
     chat = result.scalars().first()
     return chat
   
+  #update chat settings and event infomation
   async def update_chat(self, chat_id: int, chat_updates:ChatUpdate):
     #get the current chat
     result = await self.db.execute(select(models.Chats).where(models.Chats.chat_id == chat_id))
