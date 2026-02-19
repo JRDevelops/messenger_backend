@@ -7,7 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
 from database import get_db 
-from schemas import ChatCreate, ChatUpdate, ChatMembersCreate
+from schemas import ChatCreate, ChatUpdate, ChatMembersCreate, ChatMembersUpdate
+
+from enums import ChatRole
 
 class ChatService():
 
@@ -59,7 +61,7 @@ class ChatService():
     await self.delete_chat(chat_id)
 
   #add a new chat member to an existing group
-  async def add_chat_member(self, chat_id: int, user_id: int, is_admin: bool):
+  async def add_chat_member(self, chat_id: int, user_id: int, role: ChatRole):
 
     #check if member is already in the group
     result = await self.db.execute(select(models.ChatMembers).where(
@@ -80,7 +82,7 @@ class ChatService():
     new_member = models.ChatMembers(
       chat_id = chat_id,
       user_id = user_id,
-      is_admin = is_admin
+      role = role
     )
     self.db.add(new_member)
     await self.db.commit()
@@ -133,12 +135,70 @@ class ChatService():
 
     await self.db.commit()
 
+  #update a members role in a chat
+  #Only those with admin powers can do this. 
+  #there must be at least 1 admin or owner role 
+  async def update_member_role(self, current_user: CurrentUser, chat_id: int, user_id: int, updated_data: ChatMembersUpdate):
+
+    #check if user is current owner
+    is_owner = await self.is_owner(chat_id, current_user.user_id)
+    if not is_owner:
+      raise HTTPException(
+          status_code = status.HTTP_403_FORBIDDEN,
+          detail="User does not have permission."
+        )
+    
+    chat_member = await self.get_user_in_chat(chat_id, user_id)
+    current_member = await self.get_user_in_chat(chat_id, current_user.user_id)
+    
+    #owner cannot update their own role, as must first give away the owner role
+    if current_user.user_id == user_id and current_member.role == ChatRole.OWNER:
+      raise HTTPException(
+          status_code = status.HTTP_400_BAD_REQUEST,
+            detail="Ownership must be given to another member before users own role can be changed"
+        )
+
+    #check the new role is not the same as the original
+    if chat_member.role == updated_data.role:
+      raise HTTPException(
+          status_code = status.HTTP_400_BAD_REQUEST,
+          detail="New role must be different than old role."
+        )
+
+    #for updating admin or member roles
+    if updated_data.role in (ChatRole.ADMIN,ChatRole.MEMBER):
+      #update the role
+      chat_member.role = updated_data.role
+    #only the owner can assign another owner. Original ownership is lost
+    elif updated_data.role == ChatRole.OWNER:
+      #assign new owner
+      chat_member.role = ChatRole.OWNER
+      #make original owner an admin
+      current_member.role = ChatRole.ADMIN
+
+    #apply the update
+    await self.db.commit()
+    await self.db.refresh(chat_member)
+
+    return chat_member
+
   #non api methods  
 
-  #is user a group admin?
+  #is user a group admin or owner?
   async def is_admin(self, chat_id: int, user_id: int) -> bool:
     user = await self.get_user_in_chat(chat_id, user_id)
-    return user.is_admin
+    if user.role == ChatRole.OWNER or user.role == ChatRole.ADMIN:
+      return True
+    else:
+      return False
+    
+  #is user a group owner?
+  async def is_owner(self, chat_id: int, user_id: int) -> bool:
+    user = await self.get_user_in_chat(chat_id, user_id)
+    if user.role == ChatRole.OWNER:
+      return True
+    else:
+      return False
 
   #delete a group
   async def delete_chat(self, chat_id: int):

@@ -14,3 +14,8 @@ class EventStatus(str, Enum):
     ACCEPTED = "accepted"
     DECLINED = "declined"
     TENTATIVE = "tentative"
+
+class ChatRole(str, Enum):
+    OWNER = "owner"
+    ADMIN = "admin"
+    MEMBER = "member"

@@ -25,12 +25,12 @@ class ChatResponse(ChatBase):
   chat_id : int
   chat_picture_url : str | None = Field(default=None)
 
-  event_name: str | None = Field(max_length=50)
-  event_date: datetime | None = Field(default=None)
+  #event_name: str | None = Field(max_length=50)
+  #event_date: datetime | None = Field(default=None)
 
-  default_name: str | None = Field(default=None,max_length=50)
-  default_time: time | None = Field(default=None)
-  default_weekday: int | None = Field(default=None, ge=1, le=7)
+  #default_name: str | None = Field(default=None,max_length=50)
+  #default_time: time | None = Field(default=None)
+  #default_weekday: int | None = Field(default=None, ge=1, le=7)
 
   created_at: datetime
 
@@ -39,9 +39,9 @@ class ChatUpdate(BaseModel):
   chat_name : str | None = Field(default=None, min_length=1, max_length=100)
   chat_picture_url : str | None = Field(default=None)
 
-  event_name: str | None = Field(default=None,max_length=50)
-  event_date: datetime | None = Field(default=None)
+  #event_name: str | None = Field(default=None,max_length=50)
+  #event_date: datetime | None = Field(default=None)
 
-  default_name: str | None = Field(default=None,max_length=50)
-  default_time: time | None = Field(default=None)
-  default_weekday: int | None = Field(default=None, ge=1, le=7)
+  #default_name: str | None = Field(default=None,max_length=50)
+  #default_time: time | None = Field(default=None)
+  #default_weekday: int | None = Field(default=None, ge=1, le=7)

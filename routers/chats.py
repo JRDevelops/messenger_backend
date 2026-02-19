@@ -6,7 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db 
 from services import ChatService
-from schemas import ChatResponse, ChatCreate, ChatUpdate, ChatMembersResponse, ChatMembersCreate
+from schemas import ChatResponse, ChatCreate, ChatUpdate, ChatMembersResponse, ChatMembersCreate, ChatMembersUpdate
+
+from enums import ChatRole
 
 router = APIRouter()
 
@@ -22,7 +24,7 @@ print("Loading in chats API...")
 async def create_chat(chat_details: ChatCreate, current_user: CurrentUser, db: Annotated[AsyncSession,Depends(get_db)]):
   service = ChatService(db)
   new_chat = await service.create_chat(chat_details, current_user)
-  await service.add_chat_member(new_chat.chat_id, current_user.user_id, True)
+  await service.add_chat_member(new_chat.chat_id, current_user.user_id, ChatRole.OWNER)
   return new_chat
 
 
@@ -70,7 +72,7 @@ async def update_chat(current_user: CurrentUser, chat_id: int, chat_updates: Cha
 async def add_member(current_user: CurrentUser, new_chat_member: ChatMembersCreate, db: Annotated[AsyncSession,Depends(get_db)]):
   service = ChatService(db)
   current_user_has_access_to_chat = await service.get_user_in_chat(new_chat_member.chat_id, current_user.user_id)
-  new_member = await service.add_chat_member(new_chat_member.chat_id, new_chat_member.user_id, new_chat_member.is_admin)
+  new_member = await service.add_chat_member(new_chat_member.chat_id, new_chat_member.user_id, new_chat_member.role)
   return new_member
 
 #remove a member from a group
@@ -91,3 +93,15 @@ async def delete_member(current_user: CurrentUser, chat_id: int, user_id: int, d
 async def delete_chat(current_user: CurrentUser, chat_id: int, db: Annotated[AsyncSession,Depends(get_db)]):
   service = ChatService(db)
   await service.delete_chat_as_admin(current_user, chat_id)
+
+#update chat member role
+@router.patch(
+  "/{chat_id}/updaterole/{user_id}",
+  response_model=ChatMembersResponse
+)
+async def update_member_role(current_user: CurrentUser, chat_id: int, user_id: int, updated_data: ChatMembersUpdate, db: Annotated[AsyncSession,Depends(get_db)]):
+  service = ChatService(db)
+  updated_member = await service.update_member_role(current_user, chat_id, user_id, updated_data)
+  return updated_member
+
+#thinking i need to have a seperate table for the event, as anyone should be able to update the events but they should not be able to update the name etc

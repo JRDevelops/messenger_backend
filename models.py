@@ -85,13 +85,13 @@ class Chats(Base):
   chat_picture_url : Mapped[str | None] = mapped_column(String(200), nullable=True)
 
   #related to event
-  event_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
-  event_date: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+  #event_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+  #event_date: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
   #chat event setttings
-  default_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
-  default_time: Mapped[time | None] = mapped_column(Time, nullable=True)
-  default_weekday: Mapped[int | None] = mapped_column(Integer, nullable=True) #int 1 - 7 representing a weekday
+  #default_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+  #default_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+  #default_weekday: Mapped[int | None] = mapped_column(Integer, nullable=True) #int 1 - 7 representing a weekday
 
   created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
@@ -111,8 +111,9 @@ class ChatMembers(Base):
   id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
   chat_id: Mapped[int] = mapped_column(Integer, ForeignKey("chats.chat_id"), nullable=False)
   user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.user_id"), nullable=False)
-  is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
-  event_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+  #is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+  role: Mapped[str] = mapped_column(String(20), default="member")
+  #event_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
   muted_until: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
   created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
