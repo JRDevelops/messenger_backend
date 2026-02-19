@@ -1,15 +1,10 @@
 from typing import Annotated
 
-from auth import create_access_token, hash_password, verify_password, CurrentUser
-from datetime import timedelta
+from auth import CurrentUser
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi import HTTPException, status, Depends, APIRouter
-from sqlalchemy import func, select
+from fastapi import status, Depends, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-import models
-from config import settings
 from database import get_db 
 from schemas import Token, UserCreate, UserPublic, UserPrivate, UserUpdate, UserUpdatePassword
 from services import UserService, AuthService

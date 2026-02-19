@@ -2,7 +2,7 @@ from typing import Annotated
 
 from auth import CurrentUser, hash_password, verify_password
 from fastapi import HTTPException, status, Depends
-from sqlalchemy import func, select, and_
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models

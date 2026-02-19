@@ -1,11 +1,9 @@
 from typing import Annotated
 
-from fastapi import APIRouter, FastAPI, HTTPException, status, Depends
-from sqlalchemy import select, and_
+from fastapi import APIRouter, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import models
-from database import Base, engine, get_db 
+from database import get_db 
 from schemas import ContactCreate, ContactResponse, ContactUpdateStatus
 from services import ContactService
 

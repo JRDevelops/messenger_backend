@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
 from database import get_db 
-from schemas import ChatCreate, ChatUpdate
+from schemas import ChatCreate, ChatUpdate, ChatMembersCreate
 
 class ChatService():
 
@@ -30,14 +30,42 @@ class ChatService():
 
     return new_chat
 
+  #find a chat and return it from the database
+  async def get_chat_info(self, chat_id: int):
+  
+    result = await self.db.execute(select(models.Chats).where(models.Chats.chat_id == chat_id))
+    chat = result.scalars().first()
+    return chat
+  
+  #update chat settings and event infomation
+  async def update_chat(self, chat_id: int, chat_updates:ChatUpdate):
+    #get the current chat
+    result = await self.db.execute(select(models.Chats).where(models.Chats.chat_id == chat_id))
+    current_chat = result.scalars().first()
+    
+    #create the updates
+    update_data = chat_updates.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(current_chat, field, value)
+
+    await self.db.commit()
+    await self.db.refresh(current_chat)
+
+    return current_chat
+  
+  #admin calls to delete the chat
+  async def delete_chat_as_admin(self, current_user: CurrentUser, chat_id: int):
+    await self.is_admin(chat_id, current_user.user_id)
+    await self.delete_chat(chat_id)
+
   #add a new chat member to an existing group
-  async def add_chat_member(self, chat: models.Chats, new_user: models.User, is_admin: bool):
+  async def add_chat_member(self, chat_id: int, user_id: int, is_admin: bool):
 
     #check if member is already in the group
     result = await self.db.execute(select(models.ChatMembers).where(
         and_(
-          models.ChatMembers.chat_id == chat.chat_id,
-          models.ChatMembers.user_id == new_user.user_id
+          models.ChatMembers.chat_id == chat_id,
+          models.ChatMembers.user_id == user_id
         )
       )
     )
@@ -50,8 +78,8 @@ class ChatService():
 
     #add member to the group
     new_member = models.ChatMembers(
-      chat_id = chat.chat_id,
-      user_id = new_user.user_id,
+      chat_id = chat_id,
+      user_id = user_id,
       is_admin = is_admin
     )
     self.db.add(new_member)
@@ -79,26 +107,46 @@ class ChatService():
         )
 
     return user_in_chat
+  
+  #send a list of chat members
+  async def get_chat_members(self, chat_id: int):
+    result = await self.db.execute(select(models.ChatMembers).where(models.ChatMembers.chat_id == chat_id))
+    chat_members = result.scalars().all()
+    return chat_members
+  
+  #delete a member from a chat
+  async def delete_member(self, current_user: CurrentUser, chat_id: int, user_id: int):
+    #check if user is an admin, or if deleting self
+    if (not await self.is_admin(chat_id, current_user.user_id) and current_user.user_id != user_id):
+      raise HTTPException(
+          status_code = status.HTTP_403_FORBIDDEN,
+          detail="User does not have permission."
+        )
+    user_to_delete = await self.get_user_in_chat(chat_id, user_id)
+    await self.db.delete(user_to_delete)
 
-  #find a chat and return it from the database
-  async def get_chat_info(self, chat_id: int):
-  
-    result = await self.db.execute(select(models.Chats).where(models.Chats.chat_id == chat_id))
-    chat = result.scalars().first()
-    return chat
-  
-  #update chat settings and event infomation
-  async def update_chat(self, chat_id: int, chat_updates:ChatUpdate):
-    #get the current chat
-    result = await self.db.execute(select(models.Chats).where(models.Chats.chat_id == chat_id))
-    current_chat = result.scalars().first()
-    
-    #create the updates
-    update_data = chat_updates.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(current_chat, field, value)
+    #check if chat_members_list is empty:
+    chat_members = await self.get_chat_members(chat_id)
+    if not chat_members:
+      #list is empty so delete the group
+      await self.delete_chat(chat_id)
 
     await self.db.commit()
-    await self.db.refresh(current_chat)
 
-    return current_chat
+  #non api methods  
+
+  #is user a group admin?
+  async def is_admin(self, chat_id: int, user_id: int) -> bool:
+    user = await self.get_user_in_chat(chat_id, user_id)
+    return user.is_admin
+
+  #delete a group
+  async def delete_chat(self, chat_id: int):
+    chat = await self.get_chat_info(chat_id)
+    print(f"Deleting chat id {chat_id}")
+    await self.db.delete(chat)
+    await self.db.commit()
+
+  
+
+
