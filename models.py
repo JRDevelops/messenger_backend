@@ -42,7 +42,6 @@ class User(Base):
     foreign_keys=lambda: [Contact.contact_id],
     lazy="selectin"
   ) 
-
   #relationship with the group chat members table
   chat_member: Mapped[list["ChatMembers"]] = relationship(
     back_populates="user",
@@ -103,6 +102,14 @@ class Chats(Base):
     lazy="selectin"
   )
 
+  #relationship between the group table and the events table
+  events: Mapped[list["ChatEvents"]] = relationship(
+    back_populates="chat",
+    cascade="all, delete-orphan",
+    foreign_keys=lambda: [ChatEvents.chat_id],
+    lazy="selectin"
+  )
+
 
 #chat members
 class ChatMembers(Base):
@@ -117,7 +124,7 @@ class ChatMembers(Base):
   muted_until: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
   created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-  #relationship bettern the chat id and the chat members
+  #relationship between the chat id and the chat members
   chat: Mapped["Chats"] = relationship(
     back_populates="members",
     foreign_keys=[chat_id],
@@ -129,5 +136,62 @@ class ChatMembers(Base):
     foreign_keys=[user_id],
     lazy="selectin"
   )
+  
+  #relationship with the group chat members table and the event status
+  event_status: Mapped[list["EventStatus"]] = relationship(
+    back_populates="event",
+    cascade="all, delete-orphan",
+    foreign_keys=lambda: [EventStatus.user_id],
+    lazy="selectin"
+  )
+
+#events
+class ChatEvents(Base):
+  __tablename__ = "chat_events"
+
+  event_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+  chat_id: Mapped[int] = mapped_column(Integer, ForeignKey("chats.chat_id"))
+  event_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+  event_date: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+  #relationship bettween the chat id and the chat event
+  chat: Mapped["Chats"] = relationship(
+    back_populates="events",
+    foreign_keys=[chat_id],
+    lazy="selectin"
+  )
+  
+  #relationship with the events table and the event status
+  event_status: Mapped[list["EventStatus"]] = relationship(
+    back_populates="event",
+    cascade="all, delete-orphan",
+    foreign_keys=lambda: [EventStatus.event_id],
+    lazy="selectin"
+  )
+
+#event status
+class EventStatus(Base):
+  __tablename__ = "event_status"
+
+  id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+  event_id: Mapped[int] = mapped_column(Integer, ForeignKey("chat_events.event_id"))
+  user_id: Mapped[int] = mapped_column(Integer, ForeignKey("chat_members.user_id"))
+  status: Mapped[str] = mapped_column(String(20), default="pending")
+
+  #relationship between the Chat members table and the event status
+  chat: Mapped["ChatMembers"] = relationship(
+    back_populates="event_status",
+    foreign_keys=[user_id],
+    lazy="selectin"
+  )
+
+  #relationship between the Chat members table and the event status
+  event: Mapped["ChatEvents"] = relationship(
+    back_populates="event_status",
+    foreign_keys=[event_id],
+    lazy="selectin"
+  )
+
+
 
 print("Models have loaded.")
