@@ -24,7 +24,7 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(contacts.router, prefix="/api/contacts", tags=["contacts"])
 app.include_router(chats.router, prefix="/api/chats", tags=["chats"])
-app.include_router(chats.router, prefix="/api/chats/events", tags=["events"])
+#app.include_router(chats.router, prefix="/api/chats/events", tags=["events"])
 
 print("Loading completed.")
 
