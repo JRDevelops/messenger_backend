@@ -2,3 +2,4 @@ from .users import Token, UserCreate, UserPublic, UserPrivate, UserUpdate, UserU
 from .contacts import ContactCreate, ContactResponse, ContactUpdateStatus
 from .chats import ChatCreate, ChatResponse, ChatUpdate
 from .chat_members import ChatMembersCreate, ChatMembersResponse, ChatMembersUpdate
+from .events import EventResponse, EventCreate, EventUpdate

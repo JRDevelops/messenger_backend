@@ -83,15 +83,6 @@ class Chats(Base):
   chat_type: Mapped[str] = mapped_column(String(20), nullable=False)
   chat_picture_url : Mapped[str | None] = mapped_column(String(200), nullable=True)
 
-  #related to event
-  #event_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
-  #event_date: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-  #chat event setttings
-  #default_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
-  #default_time: Mapped[time | None] = mapped_column(Time, nullable=True)
-  #default_weekday: Mapped[int | None] = mapped_column(Integer, nullable=True) #int 1 - 7 representing a weekday
-
   created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
   #relationship between the group table and the members table
@@ -103,10 +94,10 @@ class Chats(Base):
   )
 
   #relationship between the group table and the events table
-  events: Mapped[list["ChatEvents"]] = relationship(
+  events: Mapped[list["Events"]] = relationship(
     back_populates="chat",
     cascade="all, delete-orphan",
-    foreign_keys=lambda: [ChatEvents.chat_id],
+    foreign_keys=lambda: [Events.chat_id],
     lazy="selectin"
   )
 
@@ -118,9 +109,7 @@ class ChatMembers(Base):
   id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
   chat_id: Mapped[int] = mapped_column(Integer, ForeignKey("chats.chat_id"), nullable=False)
   user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.user_id"), nullable=False)
-  #is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
   role: Mapped[str] = mapped_column(String(20), default="member")
-  #event_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
   muted_until: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
   created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
@@ -146,8 +135,8 @@ class ChatMembers(Base):
   )
 
 #events
-class ChatEvents(Base):
-  __tablename__ = "chat_events"
+class Events(Base):
+  __tablename__ = "events"
 
   event_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
   chat_id: Mapped[int] = mapped_column(Integer, ForeignKey("chats.chat_id"))
@@ -186,7 +175,7 @@ class EventStatus(Base):
   )
 
   #relationship between the Chat members table and the event status
-  event: Mapped["ChatEvents"] = relationship(
+  event: Mapped["Events"] = relationship(
     back_populates="event_status",
     foreign_keys=[event_id],
     lazy="selectin"

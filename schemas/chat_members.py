@@ -21,14 +21,10 @@ class ChatMembersCreate(ChatMembersBase):
 #recieve info about a member in a group
 class ChatMembersResponse(ChatMembersBase):
   id: int
-  #event_status: EventStatus | None = Field(default=None)
   muted_until: datetime | None = Field(default=None)
   created_at: datetime
 
 #update user role or mute status
 class ChatMembersUpdate(BaseModel):
-  #chat_id: int
-  #user_id: int
   role: ChatRole = Field(max_length=20, default=ChatRole.MEMBER) 
-  #event_status: EventStatus | None = Field(default=None)
   muted_until: datetime | None = Field(default=None)

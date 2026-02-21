@@ -96,7 +96,7 @@ async def delete_chat(current_user: CurrentUser, chat_id: int, db: Annotated[Asy
 
 #update chat member role
 @router.patch(
-  "/{chat_id}/updaterole/{user_id}",
+  "/{chat_id}/{user_id}/updaterole",
   response_model=ChatMembersResponse
 )
 async def update_member_role(current_user: CurrentUser, chat_id: int, user_id: int, updated_data: ChatMembersUpdate, db: Annotated[AsyncSession,Depends(get_db)]):
@@ -104,4 +104,3 @@ async def update_member_role(current_user: CurrentUser, chat_id: int, user_id: i
   updated_member = await service.update_member_role(current_user, chat_id, user_id, updated_data)
   return updated_member
 
-#thinking i need to have a seperate table for the event, as anyone should be able to update the events but they should not be able to update the name etc
