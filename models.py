@@ -128,7 +128,7 @@ class ChatMembers(Base):
   
   #relationship with the group chat members table and the event status
   event_status: Mapped[list["EventStatus"]] = relationship(
-    back_populates="event",
+    back_populates="chat_member",
     cascade="all, delete-orphan",
     foreign_keys=lambda: [EventStatus.user_id],
     lazy="selectin"
@@ -163,12 +163,12 @@ class EventStatus(Base):
   __tablename__ = "event_status"
 
   id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-  event_id: Mapped[int] = mapped_column(Integer, ForeignKey("chat_events.event_id"))
+  event_id: Mapped[int] = mapped_column(Integer, ForeignKey("events.event_id"))
   user_id: Mapped[int] = mapped_column(Integer, ForeignKey("chat_members.user_id"))
   status: Mapped[str] = mapped_column(String(20), default="pending")
 
   #relationship between the Chat members table and the event status
-  chat: Mapped["ChatMembers"] = relationship(
+  chat_member: Mapped["ChatMembers"] = relationship(
     back_populates="event_status",
     foreign_keys=[user_id],
     lazy="selectin"

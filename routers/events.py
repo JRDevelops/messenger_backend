@@ -16,7 +16,7 @@ router = APIRouter()
   "",
   response_model = EventResponse
 )
-async def create_event(current_user: CurrentUser, new_event: EventCreate, db: Annotated[AsyncSession, Depends(get_db)]):
+async def create_event(new_event: EventCreate, current_user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]):
   service = EventService(db)
-  new_event = service.create_event(current_user, new_event)
+  new_event = await service.create_event(current_user, new_event)
   return new_event

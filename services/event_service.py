@@ -15,9 +15,10 @@ class EventService():
 
   async def create_event(self, current_user: CurrentUser, event_create: EventCreate):
     #check if user is a member of the chat
-    current_member = self.member_of_chat(current_user.user_id, event_create.chat_id)
+    current_member = await self.member_of_chat(current_user.user_id, event_create.chat_id)
     #create a chat
     new_event = models.Events(
+      chat_id = event_create.chat_id,
       event_name = event_create.event_name,
       event_date = event_create.event_date
     )
@@ -26,16 +27,18 @@ class EventService():
     await self.db.commit()
     await self.db.refresh(new_event)
 
+    return new_event
+
   #non API call functions
   async def member_of_chat(self, user_id: int, chat_id: int):
-    result = self.db.execute(select(models.ChatMembers).where(
+    result = await self.db.execute(select(models.ChatMembers).where(
         and_(
           models.ChatMembers.chat_id == chat_id,
           models.ChatMembers.user_id == user_id
         )
       )
     )
-    member = result.scarlars().first()
+    member = result.scalars().first()
     if not member:
       raise HTTPException(
         status_code = status.HTTP_403_FORBIDDEN,
